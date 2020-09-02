@@ -12,6 +12,10 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 
+import com.zcl.server.Book;
+import com.zcl.server.IBookManager;
+import com.zcl.server.INewBookArrivedListener;
+
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -19,6 +23,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     IBookManager iBookManager;
     private boolean connected;
     private List<Book> bookList;
+
+    private INewBookArrivedListener listener = new INewBookArrivedListener.Stub() {
+        @Override
+        public void onNewBookArrived(Book newBook) throws RemoteException {
+            Log.d(TAG, newBook.toString() + " onNewBookArrived thread: "+ Thread.currentThread());
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +44,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (iBookManager !=null && iBookManager.asBinder().isBinderAlive()) {
+            try {
+                Log.d(TAG, "onDestroy unregisterListener");
+                iBookManager.unregisterListener(listener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
         if (connected) {
             unbindService(serviceConnection);
         }
@@ -49,8 +68,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            iBookManager = new IBookManagerProxy(service);
-
+            iBookManager = IBookManager.Stub.asInterface(service);
+            try {
+                iBookManager.registerListener(listener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
             connected = true;
         }
 

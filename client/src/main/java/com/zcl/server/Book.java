@@ -1,4 +1,4 @@
-package com.zcl.client;
+package com.zcl.server;
 
 import android.os.Parcel;
 import android.os.Parcelable;
